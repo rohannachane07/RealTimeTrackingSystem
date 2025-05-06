@@ -598,27 +598,68 @@
           userMarker.setLatLng([userLat, userLng]);
           map.setView([userLat, userLng], 15);
 
-          // Start listening to vehicle updates
-          startVehicleListener();
-
-          // Start continuous tracking
-          navigator.geolocation.watchPosition(
-            updateUserLocation,
-            handleLocationError
-          );
-        }, handleLocationError);
-      } else {
-        showAlert("Geolocation is not supported by your browser", "error");
+          
+                // Start listening to vehicle updates
+                startVehicleListener();
+                
+                // Start continuous tracking
+                navigator.geolocation.watchPosition(
+                  updateUserLocation,
+                  handleLocationError
+                );
+              },
+              (error) => {
+                handleLocationError(error);
+                // Still initialize with default values
+                startVehicleListener();
+              }
+            );
+          } else {
+            showAlert("Geolocation is not supported by your browser", "error");
+            startVehicleListener();
+          }
+          
+          // Handle Call/SMS Toggle changes
+          const toggle = document.getElementById("call-sms-toggle");
+          if (toggle) {
+            toggle.addEventListener("change", function() {
+              const isEnabled = this.checked;
+              firebase.database().ref("users/" + userId).update({
+                call_sms_enabled: isEnabled,
+              });
+              
+              showAlert(
+                isEnabled ? "Call/SMS Alerts enabled" : "Call/SMS Alerts disabled",
+                isEnabled ? "success" : "warning"
+              );
+            });
+          }
+        }
       }
 
+      // Show location permission modal on page load
+      document.addEventListener("DOMContentLoaded", function() {
+        locationModal.classList.remove("hidden");
+      });
+
+      // Update user location
       function updateUserLocation(position) {
         userLat = position.coords.latitude;
         userLng = position.coords.longitude;
         if (userMarker) {
           userMarker.setLatLng([userLat, userLng]);
         }
+        
+        // Update user location in database
+        if (userId) {
+          firebase.database().ref("users/" + userId + "/location").set({
+            lat: userLat,
+            lng: userLng
+          });
+        }
       }
 
+      // Handle location errors
       function handleLocationError(error) {
         let message = "Error getting your location: ";
         switch (error.code) {
@@ -637,7 +678,6 @@
         }
         showAlert(message, "error");
       }
-
       async function reverseGeocode(lat, lng) {
         const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
         try {
