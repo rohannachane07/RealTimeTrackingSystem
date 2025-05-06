@@ -505,39 +505,55 @@
       let alertTimeout;
 
       firebase.auth().onAuthStateChanged(function (user) {
-        if (user) {
-          const userId = user.uid;
+  if (user) {
+    const userId = user.uid;
 
-          // Update Firebase with the toggle status when changed
-          document
-            .getElementById("call-sms-toggle")
-            .addEventListener("change", function () {
-              const isEnabled = this.checked;
-              firebase
-                .database()
-                .ref("users/" + userId)
-                .update({
-                  call_sms_enabled: isEnabled,
-                });
+    // Update location on login
+    navigator.geolocation.getCurrentPosition(
+      function (position) {
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
 
-              // Show notification
-              showAlert(
-                isEnabled
-                  ? "Call/SMS Alerts enabled"
-                  : "Call/SMS Alerts disabled",
-                isEnabled ? "success" : "warning"
-              );
-            });
+        firebase.database().ref("users/" + userId + "/location").set({
+          lat: userLat,
+          lng: userLng,
+        });
+      },
+      function (error) {
+        console.warn("Location update failed: " + error.message);
+      }
+    );
 
-          // Set online status to false when tab is closed/refreshed
-          window.addEventListener("beforeunload", function () {
-            firebase
-              .database()
-              .ref("users/" + userId + "/online")
-              .set(false);
-          });
-        }
+    // Handle Call/SMS Toggle changes
+    const toggle = document.getElementById("call-sms-toggle");
+    if (toggle) {
+      toggle.addEventListener("change", function () {
+        const isEnabled = this.checked;
+
+        firebase.database().ref("users/" + userId).update({
+          call_sms_enabled: isEnabled,
+        });
+
+        // Optional: Visual notification
+        showAlert(
+          isEnabled
+            ? "Call/SMS Alerts enabled"
+            : "Call/SMS Alerts disabled",
+          isEnabled ? "success" : "warning"
+        );
       });
+    }
+
+    // Mark user offline on unload/refresh
+    window.addEventListener("beforeunload", function () {
+      firebase.database().ref("users/" + userId + "/online").set(false);
+    });
+
+    // Optionally mark online = true on login
+    firebase.database().ref("users/" + userId + "/online").set(true);
+  }
+});
+
 
       const db = firebase.database();
       const vehicleRef = db.ref("vehicle/gps");
