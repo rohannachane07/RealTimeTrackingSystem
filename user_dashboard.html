@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vehicle Tracker Dashboard</title>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <!-- Leaflet.js -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      .gradient-bg {
+        background: linear-gradient(135deg, #4285f4 0%, #bb65c9 100%);
+      }
+      #map {
+        height: 60vh;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        z-index: 1;
+      }
+      .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 26px;
+      }
+      .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .toggle-switch .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #e0e0e0;
+        transition: 0.4s;
+        border-radius: 34px;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+      }
+      .toggle-switch .slider:before {
+        position: absolute;
+        content: "";
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      }
+      input:checked + .slider {
+        background-color: #34a853;
+      }
+      input:checked + .slider:before {
+        transform: translateX(24px);
+      }
+      .vehicle-marker {
+        background-color: #6b88b8;
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+      }
+      .user-marker {
+        background-color: #61a974;
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+      }
+      .address-card {
+        max-height: 120px;
+        overflow-y: auto;
+        padding-right: 8px;
+      }
+      .address-card::-webkit-scrollbar {
+        width: 4px;
+      }
+      .address-card::-webkit-scrollbar-thumb {
+        background-color: #cbd5e0;
+        border-radius: 2px;
+      }
+
+      /* about-faq-contact us -footer */
+      .section {
+        padding: 50px 20px;
+      }
+
+      .nav-link {
+        cursor: pointer;
+      }
+
+      .footer {
+        background-color: #1c3d5c;
+        color: white;
+        padding: 20px 0;
+        text-align: center;
+      }
+
+      .footer a {
+        color: #f3d1a2;
+        background-color: #305ca4;
+      }
+
+      @media (max-width: 768px) {
+        #map {
+          height: 50vh;
+        }
+      }
+      /* Bus alert notification */
+      .bus-alert {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #ff5722;
+        color: white;
+        padding: 15px 25px;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          transform: translateX(-50%) scale(1);
+        }
+        50% {
+          transform: translateX(-50%) scale(1.05);
+        }
+        100% {
+          transform: translateX(-50%) scale(1);
+        }
+      }
+      .bus-alert svg {
+        margin-right: 10px;
+        animation: shake 0.5s infinite alternate;
+      }
+      @keyframes shake {
+        from {
+          transform: rotate(-10deg);
+        }
+        to {
+          transform: rotate(10deg);
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <!-- Navbar -->
+    <nav
+      class="bg-gradient-to-r from-blue-600 to-purple-700 text-white shadow-lg"
+    >
+      <div
+        class="container mx-auto px-4 py-3 flex justify-between items-center"
+      >
+        <div class="flex items-center space-x-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-8 w-8"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+          <span class="text-xl font-bold">Vehicle Tracker</span>
+        </div>
+        <div class="flex items-center space-x-4">
+          <!-- Dropdown Menu -->
+          <div class="relative">
+            <button
+              id="dropdownButton"
+              class="text-white hover:text-yellow-400 text-sm sm:text-base focus:outline-none transition-colors duration-300 ease-in-out"
+            >
+              More
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4 inline ml-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            <div
+              id="dropdownContent"
+              class="dropdown-content absolute hidden bg-gray-900 text-white shadow-lg rounded p-2 mt-2 transition-all duration-300 ease-in-out"
+            >
+              <a
+                href="#about"
+                class="block px-4 py-2 hover:bg-pink-400 rounded-md transition-colors duration-200"
+                >About Us</a
+              >
+              <a
+                href="#faq"
+                class="block px-4 py-2 hover:bg-pink-400 rounded-md transition-colors duration-200"
+                >FAQ</a
+              >
+              <a
+                href="#contact"
+                class="block px-4 py-2 hover:bg-pink-400 rounded-md transition-colors duration-200"
+                >Contact Us</a
+              >
+            </div>
+          </div>
+
+          <!-- Call/SMS Alerts Toggle -->
+          <div class="flex items-center space-x-2">
+            <span class="text-sm">Call/SMS Alerts</span>
+            <!-- 👈 Now always visible -->
+            <label class="toggle-switch">
+              <input type="checkbox" id="call-sms-toggle" checked />
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <!-- Logout Button -->
+          <button
+            onclick="logout()"
+            class="bg-red-500 hover:bg-red-600 px-3 py-1 rounded-md text-sm sm:text-base transition-colors duration-300 ease-in-out"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+
+      <!-- Dropdown Toggle Script -->
+      <script>
+        const dropdownButton = document.getElementById("dropdownButton");
+        const dropdownContent = document.getElementById("dropdownContent");
+
+        // Toggle visibility of the dropdown when the button is clicked
+        dropdownButton.addEventListener("click", function (event) {
+          event.stopPropagation(); // Prevent the event from propagating to the body
+          dropdownContent.classList.toggle("hidden");
+        });
+
+        // Close the dropdown if the user clicks outside of it
+        document.addEventListener("click", function (event) {
+          if (
+            !dropdownButton.contains(event.target) &&
+            !dropdownContent.contains(event.target)
+          ) {
+            dropdownContent.classList.add("hidden");
+          }
+        });
+      </script>
+    </nav>
+
+    <!-- Navbar -->
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Map Section -->
+        <div class="lg:col-span-2">
+          <h2 class="text-xl font-bold mb-4 text-gray-800">
+            Live Vehicle Tracking
+          </h2>
+          <div id="map"></div>
+        </div>
+
+        <!-- Vehicle Info Section -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h2 class="text-xl font-bold mb-4 text-gray-800">
+            Vehicle Information
+          </h2>
+          <div id="vehicles" class="space-y-4">
+            <div class="animate-pulse flex space-x-4">
+              <div class="flex-1 space-y-4 py-1">
+                <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div class="space-y-2">
+                  <div class="h-4 bg-gray-200 rounded"></div>
+                  <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6">
+            <h3 class="font-semibold mb-2 text-gray-700">Status</h3>
+            <div class="flex items-center">
+              <div class="h-2.5 w-2.5 rounded-full bg-yellow-500 mr-2"></div>
+              <span class="text-sm">Connecting to vehicle...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bus Alert Notification (initially hidden) -->
+    <div id="busAlert" class="bus-alert hidden">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-8 w-8"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"
+        />
+      </svg>
+      <div>
+        <p class="font-bold">BUS IS COMING!</p>
+        <p class="text-sm">The vehicle is nearby and arriving soon</p>
+      </div>
+    </div>
+
+    <!-- Audio element for bus alert sound -->
+    <audio id="busAlertSound" preload="auto">
+      <source
+        src="https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3"
+        type="audio/mpeg"
+      />
+    </audio>
+
+    <!-- About Us Section -->
+    <section id="about" class="section bg-white shadow-lg rounded-lg mx-4 mt-8">
+      <div class="container mx-auto">
+        <h2 class="text-3xl font-semibold text-center text-blue-600">
+          About Us
+        </h2>
+        <p class="mt-4 text-gray-700 leading-7">
+          Welcome to the Vehicle Tracking System! Our goal is to improve the
+          daily commute experience for SGGSIE&T students and staff by providing
+          a reliable and efficient way to track buses in real-time.
+        </p>
+        <p class="mt-4 text-gray-700 leading-7">
+          This system was built with the following key benefits in mind:
+        </p>
+        <ul class="mt-4 text-gray-700 list-disc pl-6">
+          <li>
+            <strong>Time Optimization:</strong> Real-time tracking helps save
+            time by providing accurate ETAs.
+          </li>
+          <li>
+            <strong>Fuel Efficiency:</strong> Prevents unnecessary delays and
+            optimizes routes, saving fuel.
+          </li>
+          <li>
+            <strong>Class Session Attendance:</strong> Reduces the chance of
+            missing important sessions due to transport delays.
+          </li>
+          <li>
+            <strong>Notifications:</strong> Stay updated with SMS or email
+            alerts on the bus's status.
+          </li>
+        </ul>
+        <p class="mt-4 text-gray-700 leading-7">
+          Our goal is to help students and staff efficiently manage their daily
+          commute and ensure timely arrivals.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="section bg-white shadow-lg rounded-lg mx-4 mt-8">
+      <div class="container mx-auto">
+        <h2 class="text-3xl font-semibold text-center text-blue-600">
+          Frequently Asked Questions (FAQ)
+        </h2>
+        <div class="mt-6 space-y-6">
+          <div class="text-gray-700">
+            <h3 class="font-semibold text-lg">
+              Q1: How can I track the bus in real-time?
+            </h3>
+            <p>
+              You can easily track the bus by logging into your dashboard. It
+              will display the bus's location on a live map, along with an
+              accurate ETA to your destination.
+            </p>
+          </div>
+          <div class="text-gray-700">
+            <h3 class="font-semibold text-lg">
+              Q2: What happens if the bus is delayed?
+            </h3>
+            <p>
+              If the bus is delayed, you will receive real-time notifications on
+              your mobile device or email. The system will update the ETA
+              automatically based on the bus's current location.
+            </p>
+          </div>
+          <div class="text-gray-700">
+            <h3 class="font-semibold text-lg">
+              Q3: How do I enable notifications?
+            </h3>
+            <p>
+              You can enable notifications from the settings section of your
+              dashboard. Choose to receive alerts via SMS or email based on your
+              preference.
+            </p>
+          </div>
+          <div class="text-gray-700">
+            <h3 class="font-semibold text-lg">
+              Q4: Can I track multiple buses?
+            </h3>
+            <p>
+              Yes, the system allows you to track multiple buses at once. You
+              can easily toggle between different buses to check their location
+              and status.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact Us Section -->
+    <section
+      id="contact"
+      class="section bg-white shadow-lg rounded-lg mx-4 mt-8"
+    >
+      <div class="container mx-auto">
+        <h2 class="text-3xl font-semibold text-center text-blue-600">
+          Contact Us
+        </h2>
+        <p class="mt-4 text-gray-700 leading-7">
+          We are here to assist you with any queries or issues you may face
+          while using the Vehicle Tracking System. Feel free to contact us using
+          any of the methods below:
+        </p>
+        <div class="mt-6 space-y-4 text-gray-700">
+          <p>
+            <strong>Email:</strong>
+            <a
+              href="mailto:support@vehicletrackingsystem.com"
+              class="text-blue-600"
+              >support@vehicletrackingsystem.com</a
+            >
+          </p>
+          <p>
+            <strong>Phone:</strong>
+            <a href="tel:+911234567890" class="text-blue-600"
+              >+91 123 456 7890</a
+            >
+          </p>
+          <p>
+            <strong>Address:</strong> SGGSIE&T, College Campus, Punjab, India
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>&copy; 2025 Vehicle Tracking System. All Rights Reserved.</p>
+      <p>
+        <a href="https://www.sggsie.com" target="_blank"
+          >Visit SGGSIE&T Website</a
+        >
+      </p>
+    </footer>
+
+    <script>
+      // Firebase config
+      const firebaseConfig = {
+        apiKey: "AIzaSyCPoo_6Y-XB69FM_qrIjErVADmnaZeG3-4",
+        authDomain: "real-time-vehicle-tracki-a83e6.firebaseapp.com",
+        databaseURL:
+          "https://real-time-vehicle-tracki-a83e6-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "real-time-vehicle-tracki-a83e6",
+        storageBucket: "real-time-vehicle-tracki-a83e6.appspot.com",
+        messagingSenderId: "665050789863",
+        appId: "1:665050789863:web:719d1311c6a71ed1c16f42",
+      };
+      firebase.initializeApp(firebaseConfig);
+
+      // DOM elements
+      const busAlert = document.getElementById("busAlert");
+      const busAlertSound = document.getElementById("busAlertSound");
+      let alertTimeout;
+
+      firebase.auth().onAuthStateChanged(function (user) {
+        if (user) {
+          const userId = user.uid;
+
+          // Update Firebase with the toggle status when changed
+          document
+            .getElementById("call-sms-toggle")
+            .addEventListener("change", function () {
+              const isEnabled = this.checked;
+              firebase
+                .database()
+                .ref("users/" + userId)
+                .update({
+                  call_sms_enabled: isEnabled,
+                });
+
+              // Show notification
+              showAlert(
+                isEnabled
+                  ? "Call/SMS Alerts enabled"
+                  : "Call/SMS Alerts disabled",
+                isEnabled ? "success" : "warning"
+              );
+            });
+
+          // Set online status to false when tab is closed/refreshed
+          window.addEventListener("beforeunload", function () {
+            firebase
+              .database()
+              .ref("users/" + userId + "/online")
+              .set(false);
+          });
+        }
+      });
+
+      const db = firebase.database();
+      const vehicleRef = db.ref("vehicle/gps");
+      let map,
+        userMarker,
+        userLat,
+        userLng,
+        vehicleMarker,
+        line,
+        alertTriggered = false;
+
+      // Initialize map with default view
+      map = L.map("map").setView([0, 0], 15);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 18,
+      }).addTo(map);
+
+      // Custom markers
+      const userIcon = L.divIcon({
+        className: "user-marker",
+        html: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+      });
+
+      const vehicleIcon = L.divIcon({
+        className: "vehicle-marker",
+        html: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor"><path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /><path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1v-1h.05a2.5 2.5 0 014.9 0H19a1 1 0 001-1v-2a1 1 0 00-.293-.707l-3-3A1 1 0 0016 7h-1V5a1 1 0 00-1-1H3z" /></svg>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+      });
+
+      // Add user marker with default position
+      userMarker = L.marker([0, 0], { icon: userIcon })
+        .addTo(map)
+        .bindPopup("Your location");
+
+      // Add vehicle marker with default position
+      vehicleMarker = L.marker([0, 0], { icon: vehicleIcon, opacity: 0 })
+        .addTo(map)
+        .bindPopup("Vehicle location");
+
+      // Get real-time location using Geolocation API
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((position) => {
+          userLat = position.coords.latitude;
+          userLng = position.coords.longitude;
+
+          // Update user marker and center map
+          userMarker.setLatLng([userLat, userLng]);
+          map.setView([userLat, userLng], 15);
+
+          // Start listening to vehicle updates
+          startVehicleListener();
+
+          // Start continuous tracking
+          navigator.geolocation.watchPosition(
+            updateUserLocation,
+            handleLocationError
+          );
+        }, handleLocationError);
+      } else {
+        showAlert("Geolocation is not supported by your browser", "error");
+      }
+
+      function updateUserLocation(position) {
+        userLat = position.coords.latitude;
+        userLng = position.coords.longitude;
+        if (userMarker) {
+          userMarker.setLatLng([userLat, userLng]);
+        }
+      }
+
+      function handleLocationError(error) {
+        let message = "Error getting your location: ";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            message += "User denied the request for Geolocation.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            message += "Location information is unavailable.";
+            break;
+          case error.TIMEOUT:
+            message += "The request to get user location timed out.";
+            break;
+          case error.UNKNOWN_ERROR:
+            message += "An unknown error occurred.";
+            break;
+        }
+        showAlert(message, "error");
+      }
+
+      async function reverseGeocode(lat, lng) {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+        try {
+          const response = await fetch(url);
+          const data = await response.json();
+          return data.display_name || "Unknown location";
+        } catch (error) {
+          console.error("Reverse geocoding failed:", error);
+          return "Unknown location";
+        }
+      }
+
+      function startVehicleListener() {
+        vehicleRef.on("value", async (snapshot) => {
+          const data = snapshot.val();
+          if (!data) return;
+
+          const busLat = data.latitude;
+          const busLng = data.longitude;
+
+          // Make vehicle marker visible
+          vehicleMarker.setOpacity(1);
+          vehicleMarker.setLatLng([busLat, busLng]);
+
+          // Remove old line if exists
+          if (line) map.removeLayer(line);
+
+          // Draw line between user and vehicle
+          line = L.polyline(
+            [
+              [userLat, userLng],
+              [busLat, busLng],
+            ],
+            {
+              color: "#4285f4",
+              weight: 3,
+              dashArray: "5, 5",
+            }
+          ).addTo(map);
+
+          // Calculate distance and ETA
+          const distance = getDistanceFromLatLonInKm(
+            userLat,
+            userLng,
+            busLat,
+            busLng
+          );
+          const speedKmph = 30; // Assume average speed of 30 km/h
+          const timeInHours = distance / speedKmph;
+          const totalSeconds = Math.round(timeInHours * 3600);
+          const minutes = Math.floor(totalSeconds / 60);
+          const seconds = totalSeconds % 60;
+
+          // Get location names
+          const [userLocation, busLocation] = await Promise.all([
+            reverseGeocode(userLat, userLng),
+            reverseGeocode(busLat, busLng),
+          ]);
+
+          // Update vehicle info panel with scrollable address cards
+          document.getElementById("vehicles").innerHTML = `
+          <div class="flex items-start space-x-3">
+            <div class="bg-blue-100 p-2 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">Your Location</p>
+              <div class="address-card font-medium">${userLocation}</div>
+            </div>
+          </div>
+          
+          <div class="flex items-start space-x-3">
+            <div class="bg-green-100 p-2 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1v-1h.05a2.5 2.5 0 014.9 0H19a1 1 0 001-1v-2a1 1 0 00-.293-.707l-3-3A1 1 0 0016 7h-1V5a1 1 0 00-1-1H3z" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">Vehicle Location</p>
+              <div class="address-card font-medium">${busLocation}</div>
+            </div>
+          </div>
+          
+          <div class="flex items-start space-x-3">
+            <div class="bg-purple-100 p-2 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-600" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M12 1.586l-4 4v12.828l4-4V1.586zM3.707 3.293A1 1 0 002 4v10a1 1 0 00.293.707L6 18.414V5.586L3.707 3.293zM17.707 5.293L14 1.586v12.828l2.293 2.293A1 1 0 0018 16V6a1 1 0 00-.293-.707z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">Distance</p>
+              <p class="font-medium">${distance.toFixed(2)} km</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start space-x-3">
+            <div class="bg-yellow-100 p-2 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-600" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">Estimated Arrival</p>
+              <p class="font-medium">${
+                minutes > 0 ? `${minutes} min ` : ""
+              }${seconds} sec</p>
+            </div>
+          </div>
+        `;
+
+          // Update status indicator
+          const statusElement = document.querySelector(".h-2.5");
+          if (distance < 2) {
+            statusElement.classList.remove("bg-yellow-500");
+            statusElement.classList.add("bg-green-500");
+            document.querySelector(".h-2.5 + span").textContent =
+              "Vehicle nearby";
+
+            if (distance < 0.5 && !alertTriggered) {
+              triggerBusAlert();
+              alertTriggered = true;
+            }
+          } else {
+            statusElement.classList.remove("bg-green-500");
+            statusElement.classList.add("bg-yellow-500");
+            document.querySelector(".h-2.5 + span").textContent =
+              "Vehicle in transit";
+
+            // Hide alert if vehicle moves away
+            if (alertTriggered) {
+              hideBusAlert();
+              alertTriggered = false;
+            }
+          }
+        });
+      }
+
+      function triggerBusAlert() {
+        // Show visual alert
+        busAlert.classList.remove("hidden");
+
+        // Play sound if alerts are enabled
+        if (document.getElementById("call-sms-toggle").checked) {
+          busAlertSound
+            .play()
+            .catch((e) => console.log("Audio play failed:", e));
+        }
+
+        // Also use speech synthesis
+        if (
+          "speechSynthesis" in window &&
+          document.getElementById("call-sms-toggle").checked
+        ) {
+          const utterance = new SpeechSynthesisUtterance(
+            "Bus is arriving soon"
+          );
+          window.speechSynthesis.speak(utterance);
+        }
+
+        // Auto-hide after 30 seconds
+        clearTimeout(alertTimeout);
+        alertTimeout = setTimeout(hideBusAlert, 30000);
+      }
+
+      function hideBusAlert() {
+        busAlert.classList.add("hidden");
+        busAlertSound.pause();
+        busAlertSound.currentTime = 0;
+      }
+
+      function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Radius of the Earth in km
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLon = ((lon2 - lon1) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos((lat1 * Math.PI) / 180) *
+            Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c; // Distance in km
+      }
+
+      function showAlert(message, type) {
+        const alertDiv = document.createElement("div");
+        alertDiv.className = `fixed top-4 right-4 px-4 py-2 rounded-md shadow-lg text-white ${
+          type === "error"
+            ? "bg-red-500"
+            : type === "success"
+            ? "bg-green-500"
+            : "bg-blue-500"
+        }`;
+        alertDiv.textContent = message;
+        document.body.appendChild(alertDiv);
+
+        setTimeout(() => {
+          alertDiv.remove();
+        }, 3000);
+      }
+
+      function logout() {
+        firebase
+          .auth()
+          .signOut()
+          .then(() => {
+            window.location.href = "login.html";
+          });
+      }
+    </script>
+  </body>
+</html>
