@@ -36,6 +36,12 @@
           <input type="email" id="email" placeholder="example@mail.com"
                  class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required />
         </div>
+
+        <div>
+          <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+          <input type="text" id="phone" placeholder="Phone Number"
+                 class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required />
+        </div>
         
         <div>
           <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
@@ -72,12 +78,13 @@
   <script>
     function signup() {
       const email = document.getElementById("email").value;
+      const phone = document.getElementById("phone").value;
       const password = document.getElementById("password").value;
       const confirmPassword = document.getElementById("confirm-password").value;
       const messageElement = document.getElementById("message");
 
       // Validation
-      if (!email || !password || !confirmPassword) {
+      if (!email || !phone || !password || !confirmPassword) {
         showMessage("Please fill in all fields.", "error");
         return;
       }
@@ -91,14 +98,15 @@
         .then((userCredential) => {
           const userId = userCredential.user.uid;
 
-          // Set user data in Firebase Database
+          // Store user data in Firebase Realtime Database
           firebase.database().ref("users/" + userId).set({
             email: email,
+            phone: phone,
             online: false
           }).then(() => {
             showMessage("Signup successful! Redirecting...", "success");
             setTimeout(() => {
-              window.location.href = "login.html"; // Redirect to login page
+              window.location.href = "login.html";
             }, 1500);
           }).catch(error => {
             showMessage("Error: " + error.message, "error");
@@ -114,7 +122,7 @@
       messageElement.textContent = message;
       messageElement.className = `text-center text-sm mt-3 ${type === "error" ? "text-red-500" : "text-green-600"}`;
 
-      // Hide message after 5 seconds
+      // Clear message after 5 seconds
       setTimeout(() => {
         messageElement.textContent = "";
       }, 5000);
