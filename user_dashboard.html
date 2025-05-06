@@ -513,11 +513,17 @@
             .getElementById("call-sms-toggle")
             .addEventListener("change", function () {
               const isEnabled = this.checked;
-              firebase
-                .database()
-                .ref("users/" + userId)
-                .update({
-                  call_sms_enabled: isEnabled,
+               firebase.database().ref("users/" + userId).set({
+                  name: name,
+                  email: email,
+                  phone: phone,
+                  location: {
+                    lat: userLat,
+                    lng: userLng,
+                  },
+                  notified: false,
+                  online: true,
+                  call_sms_enabled: true
                 });
 
               // Show notification
