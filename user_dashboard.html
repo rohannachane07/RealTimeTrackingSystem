@@ -240,7 +240,7 @@
             <span class="text-sm">Call/SMS Alerts</span>
             <!-- 👈 Now always visible -->
             <label class="toggle-switch">
-              <input type="checkbox" id="call-sms-toggle" unchecked />
+              <input type="checkbox" id="call-sms-toggle" checked />
               <span class="slider"></span>
             </label>
           </div>
@@ -504,104 +504,40 @@
       const busAlertSound = document.getElementById("busAlertSound");
       let alertTimeout;
 
-   firebase.auth().onAuthStateChanged(function (user) {
-  if (user) {
-    const userId = user.uid;
+      firebase.auth().onAuthStateChanged(function (user) {
+        if (user) {
+          const userId = user.uid;
 
-    // Optional: Set user online explicitly on login
-    firebase.database().ref("users/" + userId + "/online").set(true);
+          // Update Firebase with the toggle status when changed
+          document
+            .getElementById("call-sms-toggle")
+            .addEventListener("change", function () {
+              const isEnabled = this.checked;
+              firebase
+                .database()
+                .ref("users/" + userId)
+                .update({
+                  call_sms_enabled: isEnabled,
+                });
 
-    // Get location and update full user profile
-    navigator.geolocation.getCurrentPosition(
-      function (position) {
-        const userLat = position.coords.latitude;
-        const userLng = position.coords.longitude;
+              // Show notification
+              showAlert(
+                isEnabled
+                  ? "Call/SMS Alerts enabled"
+                  : "Call/SMS Alerts disabled",
+                isEnabled ? "success" : "warning"
+              );
+            });
 
-        const name = localStorage.getItem("name") || "Anonymous";
-        const email = user.email || "No Email";
-        const phone = localStorage.getItem("phone") || "Unknown";
-
-        firebase.database().ref("users/" + userId).set({
-          name: name,
-          email: email,
-          phone: phone,
-          location: {
-            lat: userLat,
-            lng: userLng,
-          },
-          notified: false,
-          online: true,
-          call_sms_enabled: true // default to enabled
-        });
-      },
-      function (error) {
-        console.warn("Location access denied: " + error.message);
-        // Still update basic profile
-        firebase.database().ref("users/" + userId).update({
-          online: true,
-          notified: false,
-        });
-      }
-    );
-
-    // Handle toggle change once DOM is ready
-    document.addEventListener("DOMContentLoaded", function () {
-      const toggle = document.getElementById("call-sms-toggle");
-      if (toggle) {
-        toggle.addEventListener("change", function () {
-          const isEnabled = this.checked;
-          firebase.database().ref("users/" + userId).update({
-            call_sms_enabled: isEnabled,
+          // Set online status to false when tab is closed/refreshed
+          window.addEventListener("beforeunload", function () {
+            firebase
+              .database()
+              .ref("users/" + userId + "/online")
+              .set(false);
           });
-
-          showAlert(
-            isEnabled
-              ? "Call/SMS Alerts enabled"
-              : "Call/SMS Alerts disabled",
-            isEnabled ? "success" : "warning"
-          );
-        });
-      }
-    });
-
-    // Mark user offline on window close or reload
-    window.addEventListener("beforeunload", function () {
-      firebase.database().ref("users/" + userId + "/online").set(false);
-    });
-  }
-});
-
-
-    // Handle Call/SMS Toggle changes
-    const toggle = document.getElementById("call-sms-toggle");
-    if (toggle) {
-      toggle.addEventListener("change", function () {
-        const isEnabled = this.checked;
-
-        firebase.database().ref("users/" + userId).update({
-          call_sms_enabled: isEnabled,
-        });
-
-        // Optional: Visual notification
-        showAlert(
-          isEnabled
-            ? "Call/SMS Alerts enabled"
-            : "Call/SMS Alerts disabled",
-          isEnabled ? "success" : "warning"
-        );
+        }
       });
-    }
-
-    // Mark user offline on unload/refresh
-    window.addEventListener("beforeunload", function () {
-      firebase.database().ref("users/" + userId + "/online").set(false);
-    });
-
-    // Optionally mark online = true on login
-    firebase.database().ref("users/" + userId + "/online").set(true);
-  }
-});
-
 
       const db = firebase.database();
       const vehicleRef = db.ref("vehicle/gps");
