@@ -504,22 +504,23 @@
       const busAlertSound = document.getElementById("busAlertSound");
       let alertTimeout;
 
-     firebase.auth().onAuthStateChanged(function (user) {
+   firebase.auth().onAuthStateChanged(function (user) {
   if (user) {
     const userId = user.uid;
 
-    // Fetch current user data (email, phone, name can be saved during signup in localStorage or another source)
-    const name = localStorage.getItem("name") || "Anonymous";
-    const email = user.email;
-    const phone = localStorage.getItem("phone") || "N/A";
+    // Optional: Set user online explicitly on login
+    firebase.database().ref("users/" + userId + "/online").set(true);
 
-    // Get current location and update Firebase
+    // Get location and update full user profile
     navigator.geolocation.getCurrentPosition(
       function (position) {
         const userLat = position.coords.latitude;
         const userLng = position.coords.longitude;
 
-        // Set full user data on login
+        const name = localStorage.getItem("name") || "Anonymous";
+        const email = user.email || "No Email";
+        const phone = localStorage.getItem("phone") || "Unknown";
+
         firebase.database().ref("users/" + userId).set({
           name: name,
           email: email,
@@ -529,62 +530,41 @@
             lng: userLng,
           },
           notified: false,
-          online: true, // user just logged in
+          online: true,
+          call_sms_enabled: true // default to enabled
         });
       },
       function (error) {
         console.warn("Location access denied: " + error.message);
+        // Still update basic profile
+        firebase.database().ref("users/" + userId).update({
+          online: true,
+          notified: false,
+        });
       }
     );
 
-    // Handle Call/SMS Toggle changes
-    const toggle = document.getElementById("call-sms-toggle");
-    if (toggle) {
-      toggle.addEventListener("change", function () {
-        const isEnabled = this.checked;
+    // Handle toggle change once DOM is ready
+    document.addEventListener("DOMContentLoaded", function () {
+      const toggle = document.getElementById("call-sms-toggle");
+      if (toggle) {
+        toggle.addEventListener("change", function () {
+          const isEnabled = this.checked;
+          firebase.database().ref("users/" + userId).update({
+            call_sms_enabled: isEnabled,
+          });
 
-        firebase.database().ref("users/" + userId).update({
-          call_sms_enabled: isEnabled,
+          showAlert(
+            isEnabled
+              ? "Call/SMS Alerts enabled"
+              : "Call/SMS Alerts disabled",
+            isEnabled ? "success" : "warning"
+          );
         });
-
-        // Optional: Toast/Notification
-        showAlert(
-          isEnabled
-            ? "Call/SMS Alerts enabled"
-            : "Call/SMS Alerts disabled",
-          isEnabled ? "success" : "warning"
-        );
-      });
-    }
-
-    // Update user as offline on page close/refresh
-    window.addEventListener("beforeunload", function () {
-      firebase.database().ref("users/" + userId + "/online").set(false);
+      }
     });
-  }
-});
 
-    // Handle Call/SMS Toggle changes
-    const toggle = document.getElementById("call-sms-toggle");
-    if (toggle) {
-      toggle.addEventListener("change", function () {
-        const isEnabled = this.checked;
-
-        firebase.database().ref("users/" + userId).update({
-          call_sms_enabled: isEnabled,
-        });
-
-        // Optional: Toast/Notification
-        showAlert(
-          isEnabled
-            ? "Call/SMS Alerts enabled"
-            : "Call/SMS Alerts disabled",
-          isEnabled ? "success" : "warning"
-        );
-      });
-    }
-
-    // Update user as offline on page close/refresh
+    // Mark user offline on window close or reload
     window.addEventListener("beforeunload", function () {
       firebase.database().ref("users/" + userId + "/online").set(false);
     });
