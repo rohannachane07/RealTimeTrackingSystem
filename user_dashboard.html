@@ -504,25 +504,66 @@
       const busAlertSound = document.getElementById("busAlertSound");
       let alertTimeout;
 
-      firebase.auth().onAuthStateChanged(function (user) {
+     firebase.auth().onAuthStateChanged(function (user) {
   if (user) {
     const userId = user.uid;
 
-    // Update location on login
+    // Fetch current user data (email, phone, name can be saved during signup in localStorage or another source)
+    const name = localStorage.getItem("name") || "Anonymous";
+    const email = user.email;
+    const phone = localStorage.getItem("phone") || "N/A";
+
+    // Get current location and update Firebase
     navigator.geolocation.getCurrentPosition(
       function (position) {
         const userLat = position.coords.latitude;
         const userLng = position.coords.longitude;
 
-        firebase.database().ref("users/" + userId + "/location").set({
-          lat: userLat,
-          lng: userLng,
+        // Set full user data on login
+        firebase.database().ref("users/" + userId).set({
+          name: name,
+          email: email,
+          phone: phone,
+          location: {
+            lat: userLat,
+            lng: userLng,
+          },
+          notified: false,
+          online: true, // user just logged in
         });
       },
       function (error) {
-        console.warn("Location update failed: " + error.message);
+        console.warn("Location access denied: " + error.message);
       }
     );
+
+    // Handle Call/SMS Toggle changes
+    const toggle = document.getElementById("call-sms-toggle");
+    if (toggle) {
+      toggle.addEventListener("change", function () {
+        const isEnabled = this.checked;
+
+        firebase.database().ref("users/" + userId).update({
+          call_sms_enabled: isEnabled,
+        });
+
+        // Optional: Toast/Notification
+        showAlert(
+          isEnabled
+            ? "Call/SMS Alerts enabled"
+            : "Call/SMS Alerts disabled",
+          isEnabled ? "success" : "warning"
+        );
+      });
+    }
+
+    // Update user as offline on page close/refresh
+    window.addEventListener("beforeunload", function () {
+      firebase.database().ref("users/" + userId + "/online").set(false);
+    });
+  }
+});
+
 
     // Handle Call/SMS Toggle changes
     const toggle = document.getElementById("call-sms-toggle");
