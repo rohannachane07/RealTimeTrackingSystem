@@ -564,6 +564,33 @@
   }
 });
 
+    // Handle Call/SMS Toggle changes
+    const toggle = document.getElementById("call-sms-toggle");
+    if (toggle) {
+      toggle.addEventListener("change", function () {
+        const isEnabled = this.checked;
+
+        firebase.database().ref("users/" + userId).update({
+          call_sms_enabled: isEnabled,
+        });
+
+        // Optional: Toast/Notification
+        showAlert(
+          isEnabled
+            ? "Call/SMS Alerts enabled"
+            : "Call/SMS Alerts disabled",
+          isEnabled ? "success" : "warning"
+        );
+      });
+    }
+
+    // Update user as offline on page close/refresh
+    window.addEventListener("beforeunload", function () {
+      firebase.database().ref("users/" + userId + "/online").set(false);
+    });
+  }
+});
+
 
     // Handle Call/SMS Toggle changes
     const toggle = document.getElementById("call-sms-toggle");
