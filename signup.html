@@ -32,6 +32,12 @@
 
       <div class="space-y-4">
         <div>
+          <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+          <input type="text" id="name" placeholder="John Doe"
+                 class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required />
+        </div>
+
+        <div>
           <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
           <input type="email" id="email" placeholder="example@mail.com"
                  class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required />
@@ -56,7 +62,7 @@
         </div>
       </div>
 
-      <button onclick="signup()"
+      <button onclick="signUp()"
               class="w-full gradient-bg hover:opacity-90 text-white font-semibold py-3 mt-6 rounded-md transition duration-200 shadow-md">
         Sign Up
       </button>
@@ -65,7 +71,7 @@
         Already have an account? <a href="login.html" class="text-blue-600 hover:underline font-medium">Login</a>
       </div>
 
-      <div id="message" class="text-center text-sm mt-3"></div>
+      <div id="message" class="hidden mt-4 text-sm font-medium text-white px-4 py-3 rounded-md text-center"></div>
     </div>
   </div>
 
@@ -73,58 +79,102 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="firebase-config.js"></script>
+  
+  <!-- Firebase config -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCPoo_6Y-XB69FM_qrIjErVADmnaZeG3-4",
+      authDomain: "real-time-vehicle-tracki-a83e6.firebaseapp.com",
+      databaseURL: "https://real-time-vehicle-tracki-a83e6-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "real-time-vehicle-tracki-a83e6",
+      storageBucket: "real-time-vehicle-tracki-a83e6.appspot.com",
+      messagingSenderId: "665050789863",
+      appId: "1:665050789863:web:719d1311c6a71ed1c16f42"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
 
   <script>
-    function signup() {
+    function signUp() {
+      const name = document.getElementById("name").value;
       const email = document.getElementById("email").value;
-      const phone = document.getElementById("phone").value;
       const password = document.getElementById("password").value;
       const confirmPassword = document.getElementById("confirm-password").value;
-      const messageElement = document.getElementById("message");
+      const phone = document.getElementById("phone").value;
+      const messageEl = document.getElementById("message");
 
       // Validation
-      if (!email || !phone || !password || !confirmPassword) {
-        showMessage("Please fill in all fields.", "error");
+      if (!name || !email || !password || !confirmPassword || !phone) {
+        showMessage("Please fill all fields", "error");
         return;
       }
 
       if (password !== confirmPassword) {
-        showMessage("Passwords do not match.", "error");
+        showMessage("Passwords do not match", "error");
         return;
       }
 
+      // Get user location before creating account
+      navigator.geolocation.getCurrentPosition(
+        function(position) {
+          // Location access granted
+          const userLat = position.coords.latitude;
+          const userLng = position.coords.longitude;
+          
+          createUserAccount(name, email, password, phone, userLat, userLng);
+        },
+        function(error) {
+          // Location access denied or failed
+          showMessage("Location access is required for this app. Please enable location services.", "error");
+        }
+      );
+    }
+
+    function createUserAccount(name, email, password, phone, lat, lng) {
+      const messageEl = document.getElementById("message");
+      
       firebase.auth().createUserWithEmailAndPassword(email, password)
         .then((userCredential) => {
           const userId = userCredential.user.uid;
 
-          // Store user data in Firebase Realtime Database
-          firebase.database().ref("users/" + userId).set({
+          // Store complete user data in Firebase
+          firebase.database().ref('users/' + userId).set({
+            name: name,
             email: email,
             phone: phone,
-            online: false
+            location: {
+              lat: lat,
+              lng: lng
+            },
+            notified: false,
+            online: false,
+            createdAt: firebase.database.ServerValue.TIMESTAMP
           }).then(() => {
-            showMessage("Signup successful! Redirecting...", "success");
+            showMessage("Signup successful! Redirecting to login...", "success");
+            
             setTimeout(() => {
               window.location.href = "login.html";
             }, 1500);
-          }).catch(error => {
-            showMessage("Error: " + error.message, "error");
+          }).catch((error) => {
+            showMessage("Database error: " + error.message, "error");
           });
         })
-        .catch(error => {
-          showMessage("Error: " + error.message, "error");
+        .catch((error) => {
+          showMessage("Authentication error: " + error.message, "error");
         });
     }
 
     function showMessage(message, type) {
-      const messageElement = document.getElementById("message");
-      messageElement.textContent = message;
-      messageElement.className = `text-center text-sm mt-3 ${type === "error" ? "text-red-500" : "text-green-600"}`;
-
+      const messageEl = document.getElementById("message");
+      messageEl.textContent = message;
+      messageEl.className = `mt-4 text-sm font-medium text-white px-4 py-3 rounded-md text-center ${
+        type === "error" ? "bg-red-500" : "bg-green-600"
+      }`;
+      messageEl.style.display = "block";
+      
       // Clear message after 5 seconds
       setTimeout(() => {
-        messageElement.textContent = "";
+        messageEl.style.display = "none";
       }, 5000);
     }
   </script>
