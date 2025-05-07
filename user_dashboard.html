@@ -485,431 +485,365 @@
       </p>
     </footer>
 
-<script>
-  // Firebase config
-  const firebaseConfig = {
-    apiKey: "AIzaSyCPoo_6Y-XB69FM_qrIjErVADmnaZeG3-4",
-    authDomain: "real-time-vehicle-tracki-a83e6.firebaseapp.com",
-    databaseURL: "https://real-time-vehicle-tracki-a83e6-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "real-time-vehicle-tracki-a83e6",
-    storageBucket: "real-time-vehicle-tracki-a83e6.appspot.com",
-    messagingSenderId: "665050789863",
-    appId: "1:665050789863:web:719d1311c6a71ed1c16f42",
-  };
-  
-  // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
-  
-  // DOM elements
-  const busAlert = document.getElementById("busAlert");
-  const busAlertSound = document.getElementById("busAlertSound");
-  const locationModal = document.getElementById("locationModal");
-  const continueBtn = document.getElementById("continueBtn");
-  const dropdownButton = document.getElementById("dropdownButton");
-  const dropdownContent = document.getElementById("dropdownContent");
-  
-  let alertTimeout;
-  let map, userMarker, userLat, userLng, vehicleMarker, line, alertTriggered = false;
-  let userId = null;
+    <script>
+      // Firebase config
+      const firebaseConfig = {
+        apiKey: "AIzaSyCPoo_6Y-XB69FM_qrIjErVADmnaZeG3-4",
+        authDomain: "real-time-vehicle-tracki-a83e6.firebaseapp.com",
+        databaseURL:
+          "https://real-time-vehicle-tracki-a83e6-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "real-time-vehicle-tracki-a83e6",
+        storageBucket: "real-time-vehicle-tracki-a83e6.appspot.com",
+        messagingSenderId: "665050789863",
+        appId: "1:665050789863:web:719d1311c6a71ed1c16f42",
+      };
+      firebase.initializeApp(firebaseConfig);
 
-  // Check authentication state
-  firebase.auth().onAuthStateChanged(function(user) {
-    if (!user) {
-      // User is not logged in, redirect to login page
-      window.location.href = "login.html";
-    } else {
-      userId = user.uid;
-      // Set user online status
-      firebase.database().ref("users/" + userId + "/online").set(true);
-    }
-  });
+      // DOM elements
+      const busAlert = document.getElementById("busAlert");
+      const busAlertSound = document.getElementById("busAlertSound");
+      let alertTimeout;
 
-  // Dropdown toggle functionality
-  dropdownButton.addEventListener("click", function(event) {
-    event.stopPropagation();
-    dropdownContent.classList.toggle("hidden");
-  });
+      firebase.auth().onAuthStateChanged(function (user) {
+        if (user) {
+          const userId = user.uid;
 
-  document.addEventListener("click", function(event) {
-    if (!dropdownButton.contains(event.target) && !dropdownContent.contains(event.target)) {
-      dropdownContent.classList.add("hidden");
-    }
-  });
+          // Update Firebase with the toggle status when changed
+          document
+            .getElementById("call-sms-toggle")
+            .addEventListener("change", function () {
+              const isEnabled = this.checked;
+              firebase
+                .database()
+                .ref("users/" + userId)
+                .update({
+                  call_sms_enabled: isEnabled,
+                });
 
-  // Location permission modal
-  continueBtn.addEventListener("click", function() {
-    locationModal.classList.add("hidden");
-    initializeMapAndTracking();
-  });
-
-  // Initialize map with default view
-  function initializeMap() {
-    map = L.map('map').setView([0, 0], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 18,
-    }).addTo(map);
-    
-    // Add custom markers
-    const userIcon = L.divIcon({
-      className: "user-marker",
-      html: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>',
-      iconSize: [30, 30],
-      iconAnchor: [15, 15],
-    });
-
-    const vehicleIcon = L.divIcon({
-      className: "vehicle-marker",
-      html: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor"><path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /><path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1v-1h.05a2.5 2.5 0 014.9 0H19a1 1 0 001-1v-2a1 1 0 00-.293-.707l-3-3A1 1 0 0016 7h-1V5a1 1 0 00-1-1H3z" /></svg>',
-      iconSize: [30, 30],
-      iconAnchor: [15, 15],
-    });
-
-    // Add user marker with default position
-    userMarker = L.marker([0, 0], { icon: userIcon })
-      .addTo(map)
-      .bindPopup("Your location");
-
-    // Add vehicle marker with default position
-    vehicleMarker = L.marker([0, 0], { icon: vehicleIcon, opacity: 0 })
-      .addTo(map)
-      .bindPopup("Vehicle location");
-  }
-
-  // Initialize map and start tracking
-  function initializeMapAndTracking() {
-    initializeMap();
-    
-    // Get current user
-    const user = firebase.auth().currentUser;
-    if (user) {
-      userId = user.uid;
-      
-      // Get user's location
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            userLat = position.coords.latitude;
-            userLng = position.coords.longitude;
-            
-            // Update user marker and center map
-            userMarker.setLatLng([userLat, userLng]);
-            map.setView([userLat, userLng], 15);
-            
-            // Update user profile in database
-            const name = localStorage.getItem("name") || "Anonymous";
-            const email = user.email || "No Email";
-            const phone = localStorage.getItem("phone") || "Unknown";
-            
-            firebase.database().ref("users/" + userId).set({
-              name: name,
-              email: email,
-              phone: phone,
-              location: {
-                lat: userLat,
-                lng: userLng,
-              },
-              notified: false,
-              online: true,
-              call_sms_enabled: true
+              // Show notification
+              showAlert(
+                isEnabled
+                  ? "Call/SMS Alerts enabled"
+                  : "Call/SMS Alerts disabled",
+                isEnabled ? "success" : "warning"
+              );
             });
-            
-            // Start listening to vehicle updates
-            startVehicleListener();
-            
-            // Start continuous tracking
-            navigator.geolocation.watchPosition(
-              updateUserLocation,
-              handleLocationError
-            );
-          },
-          (error) => {
-            handleLocationError(error);
-            // Still initialize with default values
-            startVehicleListener();
-          }
-        );
+
+          // Set online status to false when tab is closed/refreshed
+          window.addEventListener("beforeunload", function () {
+            firebase
+              .database()
+              .ref("users/" + userId + "/online")
+              .set(false);
+          });
+        }
+      });
+
+      const db = firebase.database();
+      const vehicleRef = db.ref("vehicle/gps");
+      let map,
+        userMarker,
+        userLat,
+        userLng,
+        vehicleMarker,
+        line,
+        alertTriggered = false;
+
+      // Initialize map with default view
+      map = L.map("map").setView([0, 0], 15);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 18,
+      }).addTo(map);
+
+      // Custom markers
+      const userIcon = L.divIcon({
+        className: "user-marker",
+        html: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+      });
+
+      const vehicleIcon = L.divIcon({
+        className: "vehicle-marker",
+        html: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor"><path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /><path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1v-1h.05a2.5 2.5 0 014.9 0H19a1 1 0 001-1v-2a1 1 0 00-.293-.707l-3-3A1 1 0 0016 7h-1V5a1 1 0 00-1-1H3z" /></svg>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+      });
+
+      // Add user marker with default position
+      userMarker = L.marker([0, 0], { icon: userIcon })
+        .addTo(map)
+        .bindPopup("Your location");
+
+      // Add vehicle marker with default position
+      vehicleMarker = L.marker([0, 0], { icon: vehicleIcon, opacity: 0 })
+        .addTo(map)
+        .bindPopup("Vehicle location");
+
+      // Get real-time location using Geolocation API
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((position) => {
+          userLat = position.coords.latitude;
+          userLng = position.coords.longitude;
+
+          // Update user marker and center map
+          userMarker.setLatLng([userLat, userLng]);
+          map.setView([userLat, userLng], 15);
+
+          // Start listening to vehicle updates
+          startVehicleListener();
+
+          // Start continuous tracking
+          navigator.geolocation.watchPosition(
+            updateUserLocation,
+            handleLocationError
+          );
+        }, handleLocationError);
       } else {
         showAlert("Geolocation is not supported by your browser", "error");
-        startVehicleListener();
       }
-      
-      // Handle Call/SMS Toggle changes
-      const toggle = document.getElementById("call-sms-toggle");
-      if (toggle) {
-        toggle.addEventListener("change", function() {
-          const isEnabled = this.checked;
-          firebase.database().ref("users/" + userId).update({
-            call_sms_enabled: isEnabled,
-          });
-          
-          showAlert(
-            isEnabled ? "Call/SMS Alerts enabled" : "Call/SMS Alerts disabled",
-            isEnabled ? "success" : "warning"
+
+      function updateUserLocation(position) {
+        userLat = position.coords.latitude;
+        userLng = position.coords.longitude;
+        if (userMarker) {
+          userMarker.setLatLng([userLat, userLng]);
+        }
+      }
+
+      function handleLocationError(error) {
+        let message = "Error getting your location: ";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            message += "User denied the request for Geolocation.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            message += "Location information is unavailable.";
+            break;
+          case error.TIMEOUT:
+            message += "The request to get user location timed out.";
+            break;
+          case error.UNKNOWN_ERROR:
+            message += "An unknown error occurred.";
+            break;
+        }
+        showAlert(message, "error");
+      }
+
+      async function reverseGeocode(lat, lng) {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+        try {
+          const response = await fetch(url);
+          const data = await response.json();
+          return data.display_name || "Unknown location";
+        } catch (error) {
+          console.error("Reverse geocoding failed:", error);
+          return "Unknown location";
+        }
+      }
+
+      function startVehicleListener() {
+        vehicleRef.on("value", async (snapshot) => {
+          const data = snapshot.val();
+          if (!data) return;
+
+          const busLat = data.latitude;
+          const busLng = data.longitude;
+
+          // Make vehicle marker visible
+          vehicleMarker.setOpacity(1);
+          vehicleMarker.setLatLng([busLat, busLng]);
+
+          // Remove old line if exists
+          if (line) map.removeLayer(line);
+
+          // Draw line between user and vehicle
+          line = L.polyline(
+            [
+              [userLat, userLng],
+              [busLat, busLng],
+            ],
+            {
+              color: "#4285f4",
+              weight: 3,
+              dashArray: "5, 5",
+            }
+          ).addTo(map);
+
+          // Calculate distance and ETA
+          const distance = getDistanceFromLatLonInKm(
+            userLat,
+            userLng,
+            busLat,
+            busLng
           );
+          const speedKmph = 30; // Assume average speed of 30 km/h
+          const timeInHours = distance / speedKmph;
+          const totalSeconds = Math.round(timeInHours * 3600);
+          const minutes = Math.floor(totalSeconds / 60);
+          const seconds = totalSeconds % 60;
+
+          // Get location names
+          const [userLocation, busLocation] = await Promise.all([
+            reverseGeocode(userLat, userLng),
+            reverseGeocode(busLat, busLng),
+          ]);
+
+          // Update vehicle info panel with scrollable address cards
+          document.getElementById("vehicles").innerHTML = `
+          <div class="flex items-start space-x-3">
+            <div class="bg-blue-100 p-2 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">Your Location</p>
+              <div class="address-card font-medium">${userLocation}</div>
+            </div>
+          </div>
+          
+          <div class="flex items-start space-x-3">
+            <div class="bg-green-100 p-2 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1v-1h.05a2.5 2.5 0 014.9 0H19a1 1 0 001-1v-2a1 1 0 00-.293-.707l-3-3A1 1 0 0016 7h-1V5a1 1 0 00-1-1H3z" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">Vehicle Location</p>
+              <div class="address-card font-medium">${busLocation}</div>
+            </div>
+          </div>
+          
+          <div class="flex items-start space-x-3">
+            <div class="bg-purple-100 p-2 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-600" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M12 1.586l-4 4v12.828l4-4V1.586zM3.707 3.293A1 1 0 002 4v10a1 1 0 00.293.707L6 18.414V5.586L3.707 3.293zM17.707 5.293L14 1.586v12.828l2.293 2.293A1 1 0 0018 16V6a1 1 0 00-.293-.707z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">Distance</p>
+              <p class="font-medium">${distance.toFixed(2)} km</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start space-x-3">
+            <div class="bg-yellow-100 p-2 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-600" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">Estimated Arrival</p>
+              <p class="font-medium">${
+                minutes > 0 ? `${minutes} min ` : ""
+              }${seconds} sec</p>
+            </div>
+          </div>
+        `;
+
+          // Update status indicator
+          const statusElement = document.querySelector(".h-2.5");
+          if (distance < 2) {
+            statusElement.classList.remove("bg-yellow-500");
+            statusElement.classList.add("bg-green-500");
+            document.querySelector(".h-2.5 + span").textContent =
+              "Vehicle nearby";
+
+            if (distance < 0.5 && !alertTriggered) {
+              triggerBusAlert();
+              alertTriggered = true;
+            }
+          } else {
+            statusElement.classList.remove("bg-green-500");
+            statusElement.classList.add("bg-yellow-500");
+            document.querySelector(".h-2.5 + span").textContent =
+              "Vehicle in transit";
+
+            // Hide alert if vehicle moves away
+            if (alertTriggered) {
+              hideBusAlert();
+              alertTriggered = false;
+            }
+          }
         });
       }
-    }
-  }
 
-  // Show location permission modal on page load
-  document.addEventListener("DOMContentLoaded", function() {
-    locationModal.classList.remove("hidden");
-  });
+      function triggerBusAlert() {
+        // Show visual alert
+        busAlert.classList.remove("hidden");
 
-  // Update user location
-  function updateUserLocation(position) {
-    userLat = position.coords.latitude;
-    userLng = position.coords.longitude;
-    if (userMarker) {
-      userMarker.setLatLng([userLat, userLng]);
-    }
-    
-    // Update user location in database
-    if (userId) {
-      firebase.database().ref("users/" + userId + "/location").set({
-        lat: userLat,
-        lng: userLng
-      });
-    }
-  }
-
-  // Handle location errors
-  function handleLocationError(error) {
-    let message = "Error getting your location: ";
-    switch (error.code) {
-      case error.PERMISSION_DENIED:
-        message += "User denied the request for Geolocation.";
-        break;
-      case error.POSITION_UNAVAILABLE:
-        message += "Location information is unavailable.";
-        break;
-      case error.TIMEOUT:
-        message += "The request to get user location timed out.";
-        break;
-      case error.UNKNOWN_ERROR:
-        message += "An unknown error occurred.";
-        break;
-    }
-    showAlert(message, "error");
-  }
-
-  // Reverse geocode coordinates to address
-  async function reverseGeocode(lat, lng) {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-      return data.display_name || "Unknown location";
-    } catch (error) {
-      console.error("Reverse geocoding failed:", error);
-      return "Unknown location";
-    }
-  }
-
-  // Start listening to vehicle updates
-  function startVehicleListener() {
-    const vehicleRef = firebase.database().ref("vehicle/gps");
-    
-    vehicleRef.on("value", async (snapshot) => {
-      const data = snapshot.val();
-      if (!data) return;
-
-      const busLat = data.latitude;
-      const busLng = data.longitude;
-
-      // Make vehicle marker visible
-      vehicleMarker.setOpacity(1);
-      vehicleMarker.setLatLng([busLat, busLng]);
-
-      // Remove old line if exists
-      if (line) map.removeLayer(line);
-
-      // Draw line between user and vehicle
-      line = L.polyline(
-        [
-          [userLat || 0, userLng || 0],
-          [busLat, busLng],
-        ],
-        {
-          color: "#4285f4",
-          weight: 3,
-          dashArray: "5, 5",
+        // Play sound if alerts are enabled
+        if (document.getElementById("call-sms-toggle").checked) {
+          busAlertSound
+            .play()
+            .catch((e) => console.log("Audio play failed:", e));
         }
-      ).addTo(map);
 
-      // Calculate distance and ETA
-      const distance = getDistanceFromLatLonInKm(
-        userLat || 0,
-        userLng || 0,
-        busLat,
-        busLng
-      );
-      const speedKmph = 30; // Assume average speed of 30 km/h
-      const timeInHours = distance / speedKmph;
-      const totalSeconds = Math.round(timeInHours * 3600);
-      const minutes = Math.floor(totalSeconds / 60);
-      const seconds = totalSeconds % 60;
-
-      // Get location names
-      const [userLocation, busLocation] = await Promise.all([
-        userLat ? reverseGeocode(userLat, userLng) : Promise.resolve("Your location"),
-        reverseGeocode(busLat, busLng),
-      ]);
-
-      // Update vehicle info panel
-      document.getElementById("vehicles").innerHTML = `
-        <div class="flex items-start space-x-3">
-          <div class="bg-blue-100 p-2 rounded-full">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
-            </svg>
-          </div>
-          <div>
-            <p class="text-sm text-gray-500">Your Location</p>
-            <div class="address-card font-medium">${userLocation}</div>
-          </div>
-        </div>
-        
-        <div class="flex items-start space-x-3">
-          <div class="bg-green-100 p-2 rounded-full">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-              <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1v-1h.05a2.5 2.5 0 014.9 0H19a1 1 0 001-1v-2a1 1 0 00-.293-.707l-3-3A1 1 0 0016 7h-1V5a1 1 0 00-1-1H3z" />
-            </svg>
-          </div>
-          <div>
-            <p class="text-sm text-gray-500">Vehicle Location</p>
-            <div class="address-card font-medium">${busLocation}</div>
-          </div>
-        </div>
-        
-        <div class="flex items-start space-x-3">
-          <div class="bg-purple-100 p-2 rounded-full">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-600" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M12 1.586l-4 4v12.828l4-4V1.586zM3.707 3.293A1 1 0 002 4v10a1 1 0 00.293.707L6 18.414V5.586L3.707 3.293zM17.707 5.293L14 1.586v12.828l2.293 2.293A1 1 0 0018 16V6a1 1 0 00-.293-.707z" clip-rule="evenodd" />
-            </svg>
-          </div>
-          <div>
-            <p class="text-sm text-gray-500">Distance</p>
-            <p class="font-medium">${distance.toFixed(2)} km</p>
-          </div>
-        </div>
-        
-        <div class="flex items-start space-x-3">
-          <div class="bg-yellow-100 p-2 rounded-full">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-600" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
-            </svg>
-          </div>
-          <div>
-            <p class="text-sm text-gray-500">Estimated Arrival</p>
-            <p class="font-medium">${minutes > 0 ? `${minutes} min ` : ""}${seconds} sec</p>
-          </div>
-        </div>
-      `;
-
-      // Update status indicator
-      const statusElement = document.querySelector(".h-2.5");
-      if (distance < 2) {
-        statusElement.classList.remove("bg-yellow-500");
-        statusElement.classList.add("bg-green-500");
-        document.querySelector(".h-2.5 + span").textContent = "Vehicle nearby";
-
-        if (distance < 0.5 && !alertTriggered) {
-          triggerBusAlert();
-          alertTriggered = true;
+        // Also use speech synthesis
+        if (
+          "speechSynthesis" in window &&
+          document.getElementById("call-sms-toggle").checked
+        ) {
+          const utterance = new SpeechSynthesisUtterance(
+            "Bus is arriving soon"
+          );
+          window.speechSynthesis.speak(utterance);
         }
-      } else {
-        statusElement.classList.remove("bg-green-500");
-        statusElement.classList.add("bg-yellow-500");
-        document.querySelector(".h-2.5 + span").textContent = "Vehicle in transit";
 
-        // Hide alert if vehicle moves away
-        if (alertTriggered) {
-          hideBusAlert();
-          alertTriggered = false;
-        }
+        // Auto-hide after 30 seconds
+        clearTimeout(alertTimeout);
+        alertTimeout = setTimeout(hideBusAlert, 30000);
       }
-    });
-  }
 
-  // Trigger bus alert
-  function triggerBusAlert() {
-    // Show visual alert
-    busAlert.classList.remove("hidden");
+      function hideBusAlert() {
+        busAlert.classList.add("hidden");
+        busAlertSound.pause();
+        busAlertSound.currentTime = 0;
+      }
 
-    // Play sound if alerts are enabled
-    const toggle = document.getElementById("call-sms-toggle");
-    if (toggle && toggle.checked) {
-      busAlertSound.play().catch(e => console.log("Audio play failed:", e));
-    }
+      function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Radius of the Earth in km
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLon = ((lon2 - lon1) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos((lat1 * Math.PI) / 180) *
+            Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c; // Distance in km
+      }
 
-    // Also use speech synthesis
-    if ("speechSynthesis" in window) {
-      const utterance = new SpeechSynthesisUtterance("Bus is arriving soon");
-      window.speechSynthesis.speak(utterance);
-    }
+      function showAlert(message, type) {
+        const alertDiv = document.createElement("div");
+        alertDiv.className = `fixed top-4 right-4 px-4 py-2 rounded-md shadow-lg text-white ${
+          type === "error"
+            ? "bg-red-500"
+            : type === "success"
+            ? "bg-green-500"
+            : "bg-blue-500"
+        }`;
+        alertDiv.textContent = message;
+        document.body.appendChild(alertDiv);
 
-    // Auto-hide after 30 seconds
-    clearTimeout(alertTimeout);
-    alertTimeout = setTimeout(hideBusAlert, 30000);
-  }
+        setTimeout(() => {
+          alertDiv.remove();
+        }, 3000);
+      }
 
-  // Hide bus alert
-  function hideBusAlert() {
-    busAlert.classList.add("hidden");
-    busAlertSound.pause();
-    busAlertSound.currentTime = 0;
-  }
-
-  // Calculate distance between two coordinates
-  function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Radius of the Earth in km
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in km
-  }
-
-  // Show alert notification
-  function showAlert(message, type) {
-    const alertDiv = document.createElement("div");
-    alertDiv.className = `fixed top-4 right-4 px-4 py-2 rounded-md shadow-lg text-white ${
-      type === "error" ? "bg-red-500" :
-      type === "success" ? "bg-green-500" :
-      "bg-blue-500"
-    }`;
-    alertDiv.textContent = message;
-    document.body.appendChild(alertDiv);
-
-    setTimeout(() => {
-      alertDiv.remove();
-    }, 3000);
-  }
-
-  // Logout function
-  function logout() {
-    if (userId) {
-      firebase.database().ref("users/" + userId + "/online").set(false);
-    }
-    firebase.auth().signOut().then(() => {
-      window.location.href = "login.html";
-    });
-  }
-
-  // Set online status to false when tab is closed/refreshed
-  window.addEventListener("beforeunload", function() {
-    if (userId) {
-      firebase.database().ref("users/" + userId + "/online").set(false);
-    }
-  });
-</script>
+      function logout() {
+        firebase
+          .auth()
+          .signOut()
+          .then(() => {
+            window.location.href = "login.html";
+          });
+      }
+    </script>
   </body>
 </html>
