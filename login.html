@@ -102,7 +102,7 @@
             
             // Redirect after delay (from new version - better UX)
             setTimeout(() => {
-              window.location.href = "dashboard.html"; // Changed from user_dashboard.html for consistency
+              window.location.href = "user_dashboard.html"; // Changed from user_dashboard.html for consistency
             }, 1500);
           }).catch(error => {
             showMessage("Login successful, but status update failed: " + error.message, "warning");
