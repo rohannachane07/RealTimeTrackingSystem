@@ -161,84 +161,38 @@
   </head>
   <body class="bg-gray-50 min-h-screen">
     <!-- Navbar -->
-    <nav
-      class="bg-gradient-to-r from-blue-600 to-purple-700 text-white shadow-lg"
-    >
-      <div
-        class="container mx-auto px-4 py-3 flex justify-between items-center"
-      >
+     <nav class="gradient-bg text-white shadow-lg">
+    <div class="container mx-auto px-4 py-3">
+      <div class="flex justify-between items-center">
+        <!-- Logo/Brand -->
         <div class="flex items-center space-x-2">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-8 w-8"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-            />
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-            />
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
           <span class="text-xl font-bold">Vehicle Tracker</span>
         </div>
-        <div class="flex items-center space-x-4">
+
+        <!-- Desktop Navigation -->
+        <div class="hidden md:flex items-center space-x-6">
           <!-- Dropdown Menu -->
-          <div class="relative">
-            <button
-              id="dropdownButton"
-              class="text-white hover:text-yellow-400 text-sm sm:text-base focus:outline-none transition-colors duration-300 ease-in-out"
-            >
-              More
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-4 w-4 inline ml-2"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 9l-7 7-7-7"
-                />
+          <div class="relative group">
+            <button class="flex items-center space-x-1 text-white hover:text-yellow-300 transition-colors">
+              <span>Menu</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform group-hover:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            <div
-              id="dropdownContent"
-              class="dropdown-content absolute hidden bg-gray-900 text-white shadow-lg rounded p-2 mt-2 transition-all duration-300 ease-in-out"
-            >
-              <a
-                href="#about"
-                class="block px-4 py-2 hover:bg-pink-400 rounded-md transition-colors duration-200"
-                >About Us</a
-              >
-              <a
-                href="#faq"
-                class="block px-4 py-2 hover:bg-pink-400 rounded-md transition-colors duration-200"
-                >FAQ</a
-              >
-              <a
-                href="#contact"
-                class="block px-4 py-2 hover:bg-pink-400 rounded-md transition-colors duration-200"
-                >Contact Us</a
-              >
+            <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+              <a href="#about" class="block px-4 py-2 text-gray-800 hover:bg-blue-50">About Us</a>
+              <a href="#faq" class="block px-4 py-2 text-gray-800 hover:bg-blue-50">FAQ</a>
+              <a href="#contact" class="block px-4 py-2 text-gray-800 hover:bg-blue-50">Contact Us</a>
             </div>
           </div>
 
-          <!-- Call/SMS Alerts Toggle -->
+          <!-- Alerts Toggle -->
           <div class="flex items-center space-x-2">
-            <span class="text-sm">Call/SMS Alerts</span>
-            <!-- 👈 Now always visible -->
+            <span class="text-sm hidden sm:inline">Alerts</span>
             <label class="toggle-switch">
               <input type="checkbox" id="call-sms-toggle" unchecked />
               <span class="slider"></span>
@@ -246,35 +200,67 @@
           </div>
 
           <!-- Logout Button -->
-          <button
-            onclick="logout()"
-            class="bg-red-500 hover:bg-red-600 px-3 py-1 rounded-md text-sm sm:text-base transition-colors duration-300 ease-in-out"
-          >
+          <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-md text-sm transition-colors">
+            Logout
+          </button>
+        </div>
+
+        <!-- Mobile Menu Button -->
+        <button id="mobile-menu-button" class="md:hidden text-white focus:outline-none">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Mobile Menu -->
+      <div id="mobile-menu" class="hidden md:hidden mt-4 pb-2">
+        <div class="flex flex-col space-y-3">
+          <a href="#about" class="text-white hover:bg-blue-500 px-3 py-2 rounded">About Us</a>
+          <a href="#faq" class="text-white hover:bg-blue-500 px-3 py-2 rounded">FAQ</a>
+          <a href="#contact" class="text-white hover:bg-blue-500 px-3 py-2 rounded">Contact Us</a>
+          <div class="flex items-center justify-between pt-2 mt-2 border-t border-blue-400">
+            <span class="text-white">Alerts</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="mobile-call-sms-toggle" unchecked />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-md text-white mt-2">
             Logout
           </button>
         </div>
       </div>
-
+    </div>
+  
       <!-- Dropdown Toggle Script -->
       <script>
-        const dropdownButton = document.getElementById("dropdownButton");
-        const dropdownContent = document.getElementById("dropdownContent");
+         // Mobile menu toggle
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const mobileMenu = document.getElementById('mobile-menu');
+    
+    mobileMenuButton.addEventListener('click', function() {
+      mobileMenu.classList.toggle('hidden');
+    });
 
-        // Toggle visibility of the dropdown when the button is clicked
-        dropdownButton.addEventListener("click", function (event) {
-          event.stopPropagation(); // Prevent the event from propagating to the body
-          dropdownContent.classList.toggle("hidden");
-        });
+    // Sync toggle switches between mobile and desktop
+    const desktopToggle = document.getElementById('call-sms-toggle');
+    const mobileToggle = document.getElementById('mobile-call-sms-toggle');
+    
+    if (desktopToggle && mobileToggle) {
+      desktopToggle.addEventListener('change', function() {
+        mobileToggle.checked = this.checked;
+      });
+      
+      mobileToggle.addEventListener('change', function() {
+        desktopToggle.checked = this.checked;
+      });
+    }
 
-        // Close the dropdown if the user clicks outside of it
-        document.addEventListener("click", function (event) {
-          if (
-            !dropdownButton.contains(event.target) &&
-            !dropdownContent.contains(event.target)
-          ) {
-            dropdownContent.classList.add("hidden");
-          }
-        });
+    function logout() {
+      // Your existing logout functionality
+      console.log('Logout clicked');
+    }
       </script>
     </nav>
 
