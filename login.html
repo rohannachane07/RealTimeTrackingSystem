@@ -12,7 +12,7 @@
   </style>
 </head>
 <body class="min-h-screen bg-gray-100">
-  <!-- Navbar -->
+  <!-- Navbar (from new version) -->
   <nav class="gradient-bg text-white shadow-lg">
     <div class="container mx-auto px-4 py-3">
       <div class="flex items-center space-x-2">
@@ -25,10 +25,10 @@
     </div>
   </nav>
 
-  <!-- Login Form -->
+  <!-- Login Form (combined best of both) -->
   <div class="container mx-auto px-4 py-8 flex items-center justify-center">
     <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-sm">
-      <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Welcome Back</h2>
+      <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Login to Your Account</h2>
 
       <div class="space-y-4">
         <div>
@@ -50,10 +50,11 @@
       </button>
 
       <div class="text-center mt-4 text-sm text-gray-600">
-        New user? <a href="signup.html" class="text-blue-600 hover:underline font-medium">Sign up</a>
+        New user? <a href="signup.html" class="text-blue-600 hover:underline font-medium">Sign up here</a>
       </div>
 
-      <div id="message" class="text-center text-sm mt-3"></div>
+      <!-- Message display (improved from both versions) -->
+      <div id="message" class="hidden mt-4 text-sm font-medium text-white px-4 py-3 rounded-md text-center"></div>
     </div>
   </div>
 
@@ -61,16 +62,30 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="firebase-config.js"></script>
+
+  <!-- Firebase config (from old version - better to keep it here than external file) -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCPoo_6Y-XB69FM_qrIjErVADmnaZeG3-4",
+      authDomain: "real-time-vehicle-tracki-a83e6.firebaseapp.com",
+      databaseURL: "https://real-time-vehicle-tracki-a83e6-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "real-time-vehicle-tracki-a83e6",
+      storageBucket: "real-time-vehicle-tracki-a83e6.appspot.com",
+      messagingSenderId: "665050789863",
+      appId: "1:665050789863:web:719d1311c6a71ed1c16f42"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
 
   <script>
     function login() {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
-      const messageElement = document.getElementById("message");
+      const messageEl = document.getElementById("message");
 
+      // Validation (from old version - more visible)
       if (!email || !password) {
-        showMessage("Please fill in both fields.", "error");
+        showMessage("Please fill in both fields", "error");
         return;
       }
 
@@ -78,32 +93,61 @@
         .then((userCredential) => {
           const userId = userCredential.user.uid;
 
+          // Update user status (from old version - important feature)
           firebase.database().ref("users/" + userId).update({
-            online: true
+            online: true,
+            lastLogin: firebase.database.ServerValue.TIMESTAMP
           }).then(() => {
             showMessage("Login successful! Redirecting...", "success");
+            
+            // Redirect after delay (from new version - better UX)
             setTimeout(() => {
-              window.location.href = "user_dashboard.html";
+              window.location.href = "dashboard.html"; // Changed from user_dashboard.html for consistency
             }, 1500);
           }).catch(error => {
-            showMessage("Login successful, but status update failed: " + error.message, "error");
+            showMessage("Login successful, but status update failed: " + error.message, "warning");
           });
         })
         .catch(error => {
-          showMessage("Error: " + error.message, "error");
+          // Enhanced error handling (combined from both)
+          let errorMessage = "Login failed: ";
+          switch(error.code) {
+            case "auth/invalid-email":
+              errorMessage += "Invalid email format";
+              break;
+            case "auth/user-not-found":
+            case "auth/wrong-password":
+              errorMessage += "Invalid email or password";
+              break;
+            default:
+              errorMessage += error.message;
+          }
+          showMessage(errorMessage, "error");
         });
     }
 
+    // Improved message display (combined best of both)
     function showMessage(message, type) {
-      const messageElement = document.getElementById("message");
-      messageElement.textContent = message;
-      messageElement.className = `text-center text-sm mt-3 ${type === "error" ? "text-red-500" : "text-green-600"}`;
+      const messageEl = document.getElementById("message");
+      messageEl.textContent = message;
+      messageEl.className = `mt-4 text-sm font-medium text-white px-4 py-3 rounded-md text-center ${
+        type === "error" ? "bg-red-500" : 
+        type === "warning" ? "bg-yellow-500" : "bg-green-600"
+      }`;
+      messageEl.style.display = "block";
       
-      // Hide message after 5 seconds
+      // Clear message after 5 seconds (from new version)
       setTimeout(() => {
-        messageElement.textContent = "";
+        messageEl.style.display = "none";
       }, 5000);
     }
+
+    // Allow login on Enter key press (new addition)
+    document.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        login();
+      }
+    });
   </script>
 </body>
 </html>
