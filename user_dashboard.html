@@ -303,15 +303,14 @@
     </div>
   </div>
 </div>
-
-<!-- Bus Alert Notification -->
+<!-- Bus Alert Notification (Improved & Top Positioned) -->
 <div
   id="busAlert"
-  class="fixed bottom-6 right-6 bg-yellow-100 border border-yellow-400 text-yellow-800 px-6 py-4 rounded-xl shadow-2xl flex items-start space-x-4 hidden z-50 transition transform duration-300 ease-in-out"
+  class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-yellow-100 border border-yellow-400 text-yellow-900 px-6 py-4 rounded-2xl shadow-2xl flex items-center space-x-4 hidden z-50 animate-slide-down w-auto max-w-md"
 >
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    class="h-8 w-8 flex-shrink-0 mt-1 text-yellow-600 animate-bounce"
+    class="h-8 w-8 text-yellow-600 animate-bounce"
     fill="none"
     viewBox="0 0 24 24"
     stroke="currentColor"
@@ -323,13 +322,14 @@
       d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"
     />
   </svg>
-  <div>
-    <p class="text-lg font-bold">🚌 BUS IS COMING!</p>
+  <div class="flex-grow">
+    <p class="text-base font-semibold">🚌 BUS IS COMING!</p>
     <p class="text-sm">The vehicle is nearby and arriving soon.</p>
   </div>
+  <button onclick="hideBusAlert()" class="text-yellow-800 hover:text-yellow-600 text-lg">&times;</button>
 </div>
 
-<!-- Audio element for bus alert sound -->
+<!-- Audio for bus alert -->
 <audio id="busAlertSound" preload="auto">
   <source
     src="https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3"
@@ -337,47 +337,48 @@
   />
 </audio>
 
-<!-- Alert JavaScript -->
+<!-- JS Logic -->
 <script>
   function showBusAlert() {
     const alertBox = document.getElementById("busAlert");
     const alertSound = document.getElementById("busAlertSound");
 
     alertBox.classList.remove("hidden");
-    alertBox.classList.add("animate-slide-in");
-
     alertSound.play();
 
-    // Hide after 10 seconds
     setTimeout(() => {
-      alertBox.classList.add("hidden");
-    }, 10000);
+      hideBusAlert();
+    }, 10000); // auto-hide in 10s
   }
 
-  // Simulate vehicle arrival (replace with real condition later)
+  function hideBusAlert() {
+    document.getElementById("busAlert").classList.add("hidden");
+  }
+
+  // TEMP: Simulate alert (remove later)
   setTimeout(() => {
     showBusAlert();
-  }, 5000); // simulate trigger
+  }, 5000);
 </script>
 
-<!-- Optional animation class (Tailwind-based or custom CSS if needed) -->
+<!-- Slide-down animation -->
 <style>
-  .animate-slide-in {
-    animation: slide-in 0.5s ease-out forwards;
+  @keyframes slide-down {
+    0% {
+      transform: translate(-50%, -40px);
+      opacity: 0;
+    }
+    100% {
+      transform: translate(-50%, 0);
+      opacity: 1;
+    }
   }
 
-  @keyframes slide-in {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  .animate-slide-down {
+    animation: slide-down 0.5s ease-out;
   }
 </style>
-    
+
 
 <!--  ------------------------>
 
