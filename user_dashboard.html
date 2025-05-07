@@ -265,7 +265,7 @@
     </nav>
 
     <!-- Navbar -->
-
+<!-- 
     <!-- Main Content -->
     <div class="container mx-auto px-4 py-6">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -333,7 +333,107 @@
         src="https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3"
         type="audio/mpeg"
       />
-    </audio>
+    </audio> -->
+
+
+<!--     Live vehicle Tracking  -->
+    <!-- Main Content -->
+<div class="container mx-auto px-4 py-6">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Map Section -->
+    <div class="lg:col-span-2">
+      <h2 class="text-xl font-bold mb-4 text-gray-800">
+        Live Vehicle Tracking
+      </h2>
+      <div id="map" class="h-96 bg-gray-100 rounded-md shadow-inner"></div>
+    </div>
+
+    <!-- Vehicle Info Section -->
+    <div class="bg-white rounded-xl shadow-md p-6">
+      <h2 class="text-xl font-bold mb-4 text-gray-800">
+        Vehicle Information
+      </h2>
+      <div id="vehicles" class="space-y-4">
+        <div class="animate-pulse flex space-x-4">
+          <div class="flex-1 space-y-4 py-1">
+            <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div class="space-y-2">
+              <div class="h-4 bg-gray-200 rounded"></div>
+              <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6">
+        <h3 class="font-semibold mb-2 text-gray-700">Status</h3>
+        <div class="flex items-center">
+          <div class="h-2.5 w-2.5 rounded-full bg-yellow-500 mr-2"></div>
+          <span class="text-sm">Connecting to vehicle...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bus Alert Notification -->
+<div
+  id="busAlert"
+  class="fixed bottom-6 right-6 bg-yellow-100 border border-yellow-400 text-yellow-800 px-6 py-4 rounded-lg shadow-lg flex items-start space-x-4 hidden z-50"
+>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    class="h-8 w-8 flex-shrink-0 mt-1"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"
+    />
+  </svg>
+  <div>
+    <p class="font-bold">BUS IS COMING!</p>
+    <p class="text-sm">The vehicle is nearby and arriving soon</p>
+  </div>
+</div>
+
+<!-- Audio element for bus alert sound -->
+<audio id="busAlertSound" preload="auto">
+  <source
+    src="https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3"
+    type="audio/mpeg"
+  />
+</audio>
+
+<!-- JavaScript -->
+<script>
+  function showBusAlert() {
+    const alertBox = document.getElementById("busAlert");
+    const alertSound = document.getElementById("busAlertSound");
+
+    // Show the alert box
+    alertBox.classList.remove("hidden");
+
+    // Play sound
+    alertSound.play();
+
+    // Automatically hide after 10 seconds
+    setTimeout(() => {
+      alertBox.classList.add("hidden");
+    }, 10000);
+  }
+
+  // Example: Trigger the alert when vehicle is near
+  // You can replace this with actual proximity logic
+  setTimeout(() => {
+    showBusAlert();
+  }, 5000); // simulate after 5 seconds
+</script>
+<!--  ------------------------>
 
     <!-- About Us Section -->
     <section id="about" class="section bg-white shadow-lg rounded-lg mx-4 mt-8">
