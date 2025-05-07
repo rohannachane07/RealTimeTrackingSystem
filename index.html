@@ -3,146 +3,87 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Live Vehicle Tracker</title>
+  <title>Vehicle Tracker - Loading</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"/>
   <style>
-    #map {
-      height: 70vh;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
     .gradient-bg {
       background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
     }
-    @media (max-width: 768px) {
-      #map {
-        height: 60vh;
-      }
+    .spinner {
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-  <!-- Navbar -->
-  <nav class="gradient-bg text-white shadow-lg">
-    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-      <div class="flex items-center space-x-2">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-        <span class="text-xl font-bold">Vehicle Tracker</span>
-      </div>
-      <div class="flex items-center space-x-4">
-<!--         <a href="user_dashboard.html" class="hover:bg-blue-700 px-3 py-1 rounded transition">Dashboard</a> -->
-        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-3 py-1 rounded transition">Logout</button>
-      </div>
-    </div>
-  </nav>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  
+  <!-- Firebase Config -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCPoo_6Y-XB69FM_qrIjErVADmnaZeG3-4",
+      authDomain: "real-time-vehicle-tracki-a83e6.firebaseapp.com",
+      databaseURL: "https://real-time-vehicle-tracki-a83e6-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "real-time-vehicle-tracki-a83e6",
+      storageBucket: "real-time-vehicle-tracki-a83e6.appspot.com",
+      messagingSenderId: "665050789863",
+      appId: "1:665050789863:web:719d1311c6a71ed1c16f42"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
 
-  <!-- Main Content -->
-  <div class="container mx-auto px-4 py-6">
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Map Section -->
-      <div class="lg:col-span-2">
-        <div id="map" class="w-full"></div>
+  <!-- Loading Screen -->
+  <div class="flex flex-col items-center justify-center min-h-screen">
+    <div class="text-center p-8 max-w-md">
+      <div class="flex justify-center mb-6">
+        <svg class="spinner h-12 w-12 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
       </div>
-      
-      <!-- Vehicle Info Section -->
-      <div class="bg-white rounded-xl shadow-md p-6">
-        <h2 class="text-xl font-bold mb-4 text-gray-800">Vehicle Information</h2>
-        <div class="space-y-4">
-          <div class="flex items-center space-x-3">
-            <div class="bg-blue-100 p-2 rounded-full">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
-              </svg>
-            </div>
-            <div>
-              <p class="text-sm text-gray-500">Current Location</p>
-              <p class="font-medium"><span id="lat">--</span>, <span id="lng">--</span></p>
-            </div>
-          </div>
-          
-          <div class="flex items-center space-x-3">
-            <div class="bg-green-100 p-2 rounded-full">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
-              </svg>
-            </div>
-            <div>
-              <p class="text-sm text-gray-500">Last Updated</p>
-              <p class="font-medium"><span id="updated">--</span></p>
-            </div>
-          </div>
-          
-          <div class="flex items-center space-x-3">
-            <div class="bg-purple-100 p-2 rounded-full">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-600" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-                <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1v-1h.05a2.5 2.5 0 014.9 0H19a1 1 0 001-1v-2a1 1 0 00-.293-.707l-3-3A1 1 0 0016 7h-1V5a1 1 0 00-1-1H3z" />
-              </svg>
-            </div>
-            <div>
-              <p class="text-sm text-gray-500">Estimated Arrival</p>
-              <p class="font-medium"><span id="eta">--</span></p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="mt-6">
-          <h3 class="font-semibold mb-2 text-gray-700">Vehicle Status</h3>
-          <div class="flex items-center">
-            <div class="h-2.5 w-2.5 rounded-full bg-green-500 mr-2"></div>
-            <span class="text-sm">In Transit</span>
-          </div>
+      <h2 class="text-2xl font-bold text-gray-800 mb-2">Vehicle Tracker</h2>
+      <p class="text-gray-600 mb-6">Checking your session...</p>
+      <div id="fallback-content" class="hidden">
+        <p class="text-red-500 mb-4">Unable to verify your session</p>
+        <div class="flex space-x-4 justify-center">
+          <a href="login.html" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition">
+            Login
+          </a>
+          <a href="signup.html" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-md transition">
+            Sign Up
+          </a>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Firebase + Leaflet -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  <script src="firebase-config.js"></script>
-  
+  <!-- Auth Check Script -->
   <script>
-    // Initialize map
-    const map = L.map('map').setView([0, 0], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+    // Check auth state with timeout
+    const authCheckTimeout = setTimeout(showFallback, 5000); // 5 second timeout
     
-    // Add vehicle marker
-    const vehicleIcon = L.icon({
-      iconUrl: 'https://cdn-icons-png.flaticon.com/512/854/854878.png',
-      iconSize: [32, 32],
-      iconAnchor: [16, 32]
+    function showFallback() {
+      document.getElementById('fallback-content').classList.remove('hidden');
+      document.querySelector('.spinner').classList.add('hidden');
+    }
+
+    // Handle auth state changes
+    firebase.auth().onAuthStateChanged(function(user) {
+      clearTimeout(authCheckTimeout); // Cancel timeout if auth check completes
+      
+      if (user) {
+        // User is signed in, redirect to dashboard
+        window.location.href = "user_dashboard.html";
+      } else {
+        // No user signed in, redirect to login
+        window.location.href = "login.html";
+      }
     });
-    const marker = L.marker([0, 0], {icon: vehicleIcon}).addTo(map);
-    
-    // Firebase realtime updates
-    const userId = firebase.auth().currentUser?.uid;
-    if (userId) {
-      firebase.database().ref('users/' + userId + '/location').on('value', (snapshot) => {
-        const location = snapshot.val();
-        if (location) {
-          marker.setLatLng([location.lat, location.lng]);
-          map.setView([location.lat, location.lng], 15);
-          document.getElementById('lat').textContent = location.lat.toFixed(6);
-          document.getElementById('lng').textContent = location.lng.toFixed(6);
-          document.getElementById('updated').textContent = new Date().toLocaleTimeString();
-        }
-      });
-    }
-    
-    function logout() {
-      firebase.auth().signOut().then(() => {
-        window.location.href = 'login.html';
-      });
-    }
   </script>
 </body>
 </html>
