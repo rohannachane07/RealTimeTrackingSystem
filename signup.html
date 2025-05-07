@@ -62,10 +62,11 @@
         </div>
       </div>
 
-      <button onclick="signUp()"
-              class="w-full gradient-bg hover:opacity-90 text-white font-semibold py-3 mt-6 rounded-md transition duration-200 shadow-md">
-        Sign Up
-      </button>
+    <button onclick="signUp()"
+  class="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-blue-600 hover:to-green-600 hover:scale-105 text-white font-semibold py-3 mt-6 rounded-md transition duration-300 transform shadow-lg">
+  Sign Up
+</button>
+
 
       <div class="text-center mt-4 text-sm text-gray-600">
         Already have an account? <a href="login.html" class="text-blue-600 hover:underline font-medium">Login</a>
@@ -133,37 +134,39 @@
     function createUserAccount(name, email, password, phone, lat, lng) {
       const messageEl = document.getElementById("message");
       
-      firebase.auth().createUserWithEmailAndPassword(email, password)
-        .then((userCredential) => {
-          const userId = userCredential.user.uid;
+        function createUserAccount(name, email, password, phone, lat, lng) {
+    const messageEl = document.getElementById("message");
+    
+    firebase.auth().createUserWithEmailAndPassword(email, password)
+      .then((userCredential) => {
+        const userId = userCredential.user.uid;
 
-          // Store complete user data in Firebase
-          firebase.database().ref('users/' + userId).set({
-            name: name,
-            email: email,
-            phone: phone,
-            location: {
-              lat: lat,
-              lng: lng
-            },
-            call_sms_enabled:false,
-            notified: false,
-            online: false,
-            createdAt: firebase.database.ServerValue.TIMESTAMP
-          }).then(() => {
-            showMessage("Signup successful! Redirecting to login...", "success");
-            
-            setTimeout(() => {
-              window.location.href = "login.html";
-            }, 1500);
-          }).catch((error) => {
-            showMessage("Database error: " + error.message, "error");
-          });
-        })
-        .catch((error) => {
-          showMessage("Authentication error: " + error.message, "error");
+        // Store user data without createdAt
+        firebase.database().ref('users/' + userId).set({
+          name: name,
+          email: email,
+          phone: phone,
+          location: {
+            lat: lat,
+            lng: lng
+          },
+          call_sms_enabled: false,
+          notified: false,
+          online: false
+        }).then(() => {
+          showMessage("Signup successful! Redirecting to login...", "success");
+          
+          setTimeout(() => {
+            window.location.href = "login.html";
+          }, 1500);
+        }).catch((error) => {
+          showMessage("Database error: " + error.message, "error");
         });
-    }
+      })
+      .catch((error) => {
+        showMessage("Authentication error: " + error.message, "error");
+      });
+  }
 
     function showMessage(message, type) {
       const messageEl = document.getElementById("message");
