@@ -485,24 +485,63 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 
        // firebase enable-call/sms alert on both mobail anddesktop view 
-    firebase.auth().onAuthStateChanged(function(user) {
-      if (user) {
-        const userId = user.uid;
+ firebase.auth().onAuthStateChanged(function (user) {
+  if (user) {
+    const userId = user.uid;
+    const desktopToggle = document.getElementById("call-sms-toggle");
+    const mobileToggle = document.getElementById("mobile-call-sms-toggle");
 
-        // Update Firebase with the toggle status when changed
-        document.getElementById('call-sms-toggle').addEventListener('change', function() {
-          const isEnabled = this.checked;
-          firebase.database().ref('users/' + userId).update({
-            call_sms_enabled: isEnabled
-          });
-        });
+    // Disable toggles until Firebase data is loaded
+    if (desktopToggle) desktopToggle.disabled = true;
+    if (mobileToggle) mobileToggle.disabled = true;
 
-        // Set online status to false when tab is closed/refreshed
-        window.addEventListener("beforeunload", function () {
-          firebase.database().ref("users/" + userId + "/online").set(false);
-        });
-      }
+    // Get user's current toggle value from DB
+    firebase.database().ref("users/" + userId + "/call_sms_enabled").once("value")
+      .then(snapshot => {
+        const isEnabled = snapshot.val() === true;
+        if (desktopToggle) {
+          desktopToggle.checked = isEnabled;
+          desktopToggle.disabled = false;
+        }
+        if (mobileToggle) {
+          mobileToggle.checked = isEnabled;
+          mobileToggle.disabled = false;
+        }
+      });
+
+    // Sync toggles with each other
+    if (desktopToggle && mobileToggle) {
+      desktopToggle.addEventListener("change", function () {
+        const isEnabled = this.checked;
+        mobileToggle.checked = isEnabled;
+        updateToggleState(userId, isEnabled);
+      });
+
+      mobileToggle.addEventListener("change", function () {
+        const isEnabled = this.checked;
+        desktopToggle.checked = isEnabled;
+        updateToggleState(userId, isEnabled);
+      });
+    }
+
+    function updateToggleState(userId, isEnabled) {
+      firebase.database().ref("users/" + userId).update({
+        call_sms_enabled: isEnabled
+      });
+
+      showAlert(
+        isEnabled ? "Call/SMS Alerts enabled" : "Call/SMS Alerts disabled",
+        isEnabled ? "success" : "warning"
+      );
+    }
+
+    // Online status tracking
+    firebase.database().ref("users/" + userId + "/online").set(true);
+    window.addEventListener("beforeunload", function () {
+      firebase.database().ref("users/" + userId + "/online").set(false);
     });
+  }
+});
 
       const db = firebase.database();
       const vehicleRef = db.ref("vehicle/gps");
