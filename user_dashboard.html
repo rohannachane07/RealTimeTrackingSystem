@@ -897,14 +897,18 @@ firebase.initializeApp(firebaseConfig);
         const user = firebase.auth().currentUser;
         if (user) {
           const userId = user.uid;
-          firebase.database().ref('users/' + userId).update({ online: false })
-            .then(() => {
-              firebase.auth().signOut().then(() => {
-                window.location.href = "login.html"; // or your login page
-              });
+          firebase.database().ref('users/' + userId).update({ 
+            online: false,
+            notified: false
+          })
+          .then(() => {
+            firebase.auth().signOut().then(() => {
+              window.location.href = "login.html"; // or your login page
             });
-        }
-      }
+          });
+        }
+      }
+      
     </script>
   </body>
 </html>
